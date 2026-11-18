@@ -14,18 +14,16 @@ matching energy_dist_*.pkl (see REPRODUCE.md).
 """
 import argparse
 import json
-import os
 from pathlib import Path
 
-import cv2
 import numpy as np
 import torch
+from PIL import Image, ImageDraw, ImageFont
 
 from detectron2.config import get_cfg
 from detectron2.data import MetadataCatalog
 from detectron2.data.detection_utils import read_image
 from detectron2.engine import DefaultPredictor
-from detectron2.utils.visualizer import ColorMode, Visualizer
 
 
 def parse_args():
@@ -35,19 +33,23 @@ def parse_args():
     p.add_argument("--input", required=True, help="image file or directory")
     p.add_argument("--output", default="output/predictions")
     p.add_argument("--threshold", type=float, default=0.5)
+    p.add_argument("--line-width", type=int, default=2)
+    p.add_argument("--font-size", type=int, default=14)
+    p.add_argument("--tag", default="", help="optional prefix suffix: source/method")
     p.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     p.add_argument("--opts", nargs=argparse.REMAINDER, default=[])
     return p.parse_args()
 
 
-def make_metadata(names, max_class):
-    need = max(max_class + 1, len(names))
-    names = list(names) + [f"class_{i}" for i in range(len(names), need)]
-    if need > 80 and len(names) == need:
-        names[80] = "unknown"
-    meta = MetadataCatalog.get("__owod_predict")
-    meta.set(thing_classes=names)
-    return meta
+def load_font(size):
+    for path in [
+        "C:/Windows/Fonts/arial.ttf",
+        "C:/Windows/Fonts/segoeui.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+    ]:
+        if Path(path).exists():
+            return ImageFont.truetype(path, size)
+    return ImageFont.load_default()
 
 
 def main():
@@ -91,8 +93,10 @@ def main():
         scores = inst.scores.numpy() if inst.has("scores") else np.zeros((0,))
         classes = inst.pred_classes.numpy() if inst.has("pred_classes") else np.zeros((0,), dtype=np.int64)
         max_cls = int(classes.max()) if len(classes) else -1
-        meta = make_metadata(base_names, max_cls)
-        names = meta.get("thing_classes")
+        need = max(max_cls + 1, len(base_names))
+        names = list(base_names) + [f"class_{i}" for i in range(len(base_names), need)]
+        if need > 80:
+            names[80] = "unknown"
 
         records = []
         for box, score, cls in zip(boxes, scores, classes):
@@ -104,12 +108,27 @@ def main():
                 "box_xyxy": [float(x) for x in box],
             })
 
-        out_img = out_dir / f"{path.stem}_pred.jpg"
-        vis = Visualizer(img[:, :, ::-1], meta, instance_mode=ColorMode.IMAGE)
-        vis_out = vis.draw_instance_predictions(inst)
-        vis_out.save(str(out_img))
+        suffix = f"_{args.tag}" if args.tag else ""
+        out_img = out_dir / f"{path.stem}{suffix}_pred.jpg"
+        out_json = out_dir / f"{path.stem}{suffix}_pred.json"
 
-        out_json = out_dir / f"{path.stem}_pred.json"
+        rgb = np.ascontiguousarray(img[:, :, ::-1])
+        pil = Image.fromarray(rgb)
+        draw = ImageDraw.Draw(pil)
+        font = load_font(args.font_size)
+        for r in records:
+            c = r["class_id"]
+            x1, y1, x2, y2 = r["box_xyxy"]
+            color = (210, 50, 40) if c >= 80 else (0, 110, 200)
+            draw.rectangle((x1, y1, x2, y2), outline=color, width=args.line_width)
+            label = f'{r["class_name"]} {r["score"]:.2f}'
+            tb = draw.textbbox((0, 0), label, font=font)
+            tw, th = tb[2] - tb[0], tb[3] - tb[1]
+            ty = max(0, y1 - th - 2)
+            draw.rectangle((x1, ty, x1 + tw + 4, ty + th + 2), fill=color)
+            draw.text((x1 + 2, ty), label, fill="white", font=font)
+        pil.save(out_img, quality=92)
+
         out_json.write_text(json.dumps({
             "image": str(path),
             "checkpoint": str(args.weights),
