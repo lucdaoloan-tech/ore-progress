@@ -1,0 +1,35 @@
+_BASE_: "t1_train.yaml"
+OUTPUT_DIR: "./output/t1_unk"
+
+# 本文方法的 Task-1 配置：伪未知选样（全 proposal + GT 抑制 + 每图分位数 + NMS + 上限）
+# 与未知记忆（K 子原型 + 最近距离 + 带下限/上限的逆频率加权）。
+OWOD:
+  # 关闭 ORE 原始的 sample-pool top-k 规则，避免和 UNK_SELECT 重复选样。
+  ENABLE_THRESHOLD_AUTOLABEL_UNK: False
+  # 伪未知不参与框回归（P1-9）。
+  BOX_REG_EXCLUDE_UNKNOWN: True
+
+  UNK_SELECT:
+    ENABLE: True
+    ALL_PROPOSALS: True
+    MODE: "quantile"
+    QUANTILE: 0.95
+    MAX_PER_IMAGE: 3
+    # raw objectness logit floor, NOT a sigmoid probability
+    MIN_SCORE: 0.2
+    NMS_IOU: 0.5
+    MIN_CANDIDATES: 20
+    # 已知 GT 抑制阈值 δ；0 表示关闭（消融 "C2 without GT filter"）。
+    GT_IOU_MAX: 0.3
+
+  # Module 4: K unknown sub-prototypes + inverse-frequency weighting
+  UNK_MEMORY:
+    ENABLE: True
+    NUM_PROTOTYPES: 4
+    WEIGHT_MODE: "inv_freq"
+    ALPHA: 0.5
+    MIN_CLUSTER: 2
+    WEIGHT_CLIP: 2.0
+    NORMALIZE: True
+    WARMUP_ITERS: 3000
+    KMEANS_ITERS: 10

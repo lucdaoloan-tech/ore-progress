@@ -1,0 +1,14 @@
+_BASE_: "t1_train.yaml"
+OUTPUT_DIR: "./output/t1_base_clean"
+
+# 同一代码基线上的 ORE-style baseline：
+# 关闭选样增益与未知记忆，只保留与 method 相同的 box-reg 处理（P1-9）。
+OWOD:
+  ENABLE_THRESHOLD_AUTOLABEL_UNK: True
+  NUM_UNK_PER_IMAGE: 1
+  ENABLE_CLUSTERING: True
+  BOX_REG_EXCLUDE_UNKNOWN: True
+  UNK_SELECT:
+    ENABLE: False
+  UNK_MEMORY:
+    ENABLE: False

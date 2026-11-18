@@ -1,0 +1,26 @@
+_BASE_: "t2_train.yaml"
+OUTPUT_DIR: "./output/t2_unk"
+# Override MODEL.WEIGHTS with the Task1 checkpoint on your machine/cloud.
+
+OWOD:
+  BOX_REG_EXCLUDE_UNKNOWN: True
+  UNK_SELECT:
+    ENABLE: True
+    ALL_PROPOSALS: True
+    MODE: "quantile"
+    QUANTILE: 0.95
+    MAX_PER_IMAGE: 3
+    MIN_SCORE: 0.2
+    NMS_IOU: 0.5
+    MIN_CANDIDATES: 20
+    GT_IOU_MAX: 0.3
+  UNK_MEMORY:
+    ENABLE: True
+    NUM_PROTOTYPES: 4
+    WEIGHT_MODE: "inv_freq"
+    ALPHA: 0.5
+    MIN_CLUSTER: 2
+    WEIGHT_CLIP: 2.0
+    NORMALIZE: True
+    WARMUP_ITERS: 21000
+    KMEANS_ITERS: 10

@@ -1,0 +1,26 @@
+# Data, outputs, and large artifacts
+datasets/
+output/
+energy/
+feature_store/
+checkpoints/
+weights/
+
+# Training artifacts
+*.pth
+*.pkl
+*.log
+*.zip
+*.tar.gz
+
+# Python / tooling
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.mypy_cache/
+.pytest_cache/
+.idea/
+.vscode/
+.DS_Store

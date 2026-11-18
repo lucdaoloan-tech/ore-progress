@@ -1,0 +1,14 @@
+_BASE_: "t1_train_unk.yaml"
+OUTPUT_DIR: "./output/t1_unk_short"
+
+# Short screening schedule: same modules, compressed clustering warmup.
+SOLVER:
+  MAX_ITER: 2000
+  STEPS: (1500, 1900)
+
+OWOD:
+  CLUSTERING:
+    START_ITER: 200
+    UPDATE_MU_ITER: 200
+  UNK_MEMORY:
+    WARMUP_ITERS: 200
